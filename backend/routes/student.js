@@ -93,14 +93,14 @@ router.post('/profile', authenticateToken, async (req, res) => {
       }
 
       if (cv_url && typeof cv_url === 'string' && cv_url.startsWith('data:')) {
-        const uploadedCv = await uploadToCloudinary(cv_url, 'students/cv', 'raw');
+        const uploadedCv = await uploadToCloudinary(cv_url, 'students/cv');
         if (uploadedCv) {
           finalCvUrl = uploadedCv;
         }
       }
 
       if (certificat_url && typeof certificat_url === 'string' && certificat_url.startsWith('data:')) {
-        const uploadedCert = await uploadToCloudinary(certificat_url, 'students/certificats', 'raw');
+        const uploadedCert = await uploadToCloudinary(certificat_url, 'students/certificats');
         if (uploadedCert) {
           finalCertificatUrl = uploadedCert;
         }
@@ -283,14 +283,14 @@ router.put('/profile', authenticateToken, async (req, res) => {
       }
 
       if (req.body.cv_url && typeof req.body.cv_url === 'string' && req.body.cv_url.startsWith('data:')) {
-        const uploadedCv = await uploadToCloudinary(req.body.cv_url, 'students/cv', 'raw');
+        const uploadedCv = await uploadToCloudinary(req.body.cv_url, 'students/cv');
         if (uploadedCv) {
           req.body.cv_url = uploadedCv;
         }
       }
 
       if (req.body.certificat_url && typeof req.body.certificat_url === 'string' && req.body.certificat_url.startsWith('data:')) {
-        const uploadedCert = await uploadToCloudinary(req.body.certificat_url, 'students/certificats', 'raw');
+        const uploadedCert = await uploadToCloudinary(req.body.certificat_url, 'students/certificats');
         if (uploadedCert) {
           req.body.certificat_url = uploadedCert;
         }
