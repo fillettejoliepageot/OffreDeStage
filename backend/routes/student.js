@@ -3,6 +3,7 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
+const uploadToCloudinary = require('../config/cloudinary');
 
 // ==========================================
 // ROUTE : GET /api/student/profile
@@ -79,6 +80,35 @@ router.post('/profile', authenticateToken, async (req, res) => {
       bio
     } = req.body;
 
+    let finalPhotoUrl = photo_url;
+    let finalCvUrl = cv_url;
+    let finalCertificatUrl = certificat_url;
+
+    try {
+      if (photo_url && typeof photo_url === 'string' && photo_url.startsWith('data:')) {
+        const uploadedPhoto = await uploadToCloudinary(photo_url, 'students/photos', 'image');
+        if (uploadedPhoto) {
+          finalPhotoUrl = uploadedPhoto;
+        }
+      }
+
+      if (cv_url && typeof cv_url === 'string' && cv_url.startsWith('data:')) {
+        const uploadedCv = await uploadToCloudinary(cv_url, 'students/cv', 'raw');
+        if (uploadedCv) {
+          finalCvUrl = uploadedCv;
+        }
+      }
+
+      if (certificat_url && typeof certificat_url === 'string' && certificat_url.startsWith('data:')) {
+        const uploadedCert = await uploadToCloudinary(certificat_url, 'students/certificats', 'raw');
+        if (uploadedCert) {
+          finalCertificatUrl = uploadedCert;
+        }
+      }
+    } catch (cloudinaryError) {
+      console.error('Erreur lors de l\'upload Cloudinary (profil étudiant):', cloudinaryError);
+    }
+
     // Validation des champs obligatoires
     if (!first_name || !last_name) {
       return res.status(400).json({
@@ -128,9 +158,9 @@ router.post('/profile', authenticateToken, async (req, res) => {
           domaine_etude,
           adresse,
           telephone,
-          photo_url,
-          cv_url,
-          certificat_url,
+          finalPhotoUrl,
+          finalCvUrl,
+          finalCertificatUrl,
           niveau_etude,
           specialisation,
           etablissement,
@@ -170,9 +200,9 @@ router.post('/profile', authenticateToken, async (req, res) => {
           domaine_etude,
           adresse,
           telephone,
-          photo_url,
-          cv_url,
-          certificat_url,
+          finalPhotoUrl,
+          finalCvUrl,
+          finalCertificatUrl,
           niveau_etude,
           specialisation,
           etablissement,
@@ -243,6 +273,31 @@ router.put('/profile', authenticateToken, async (req, res) => {
       'etablissement',
       'bio'
     ];
+
+    try {
+      if (req.body.photo_url && typeof req.body.photo_url === 'string' && req.body.photo_url.startsWith('data:')) {
+        const uploadedPhoto = await uploadToCloudinary(req.body.photo_url, 'students/photos', 'image');
+        if (uploadedPhoto) {
+          req.body.photo_url = uploadedPhoto;
+        }
+      }
+
+      if (req.body.cv_url && typeof req.body.cv_url === 'string' && req.body.cv_url.startsWith('data:')) {
+        const uploadedCv = await uploadToCloudinary(req.body.cv_url, 'students/cv', 'raw');
+        if (uploadedCv) {
+          req.body.cv_url = uploadedCv;
+        }
+      }
+
+      if (req.body.certificat_url && typeof req.body.certificat_url === 'string' && req.body.certificat_url.startsWith('data:')) {
+        const uploadedCert = await uploadToCloudinary(req.body.certificat_url, 'students/certificats', 'raw');
+        if (uploadedCert) {
+          req.body.certificat_url = uploadedCert;
+        }
+      }
+    } catch (cloudinaryError) {
+      console.error('Erreur lors de l\'upload Cloudinary (mise à jour partielle étudiant):', cloudinaryError);
+    }
 
     // Validation du niveau d'étude si fourni
     if (req.body.niveau_etude) {

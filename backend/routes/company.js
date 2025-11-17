@@ -3,6 +3,7 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
+const uploadToCloudinary = require('../config/cloudinary');
 
 // ==========================================
 // ROUTE : GET /api/company/profile
@@ -74,6 +75,19 @@ router.post('/profile', authenticateToken, async (req, res) => {
       description
     } = req.body;
 
+    let finalLogoUrl = logo_url;
+
+    try {
+      if (logo_url && typeof logo_url === 'string' && logo_url.startsWith('data:')) {
+        const uploadedLogo = await uploadToCloudinary(logo_url, 'companies/logos', 'image');
+        if (uploadedLogo) {
+          finalLogoUrl = uploadedLogo;
+        }
+      }
+    } catch (cloudinaryError) {
+      console.error('Erreur lors de l\'upload Cloudinary (profil entreprise):', cloudinaryError);
+    }
+
     // Validation des champs obligatoires
     if (!company_name || !sector) {
       return res.status(400).json({
@@ -103,7 +117,7 @@ router.post('/profile', authenticateToken, async (req, res) => {
              description = $7
          WHERE user_id = $8
          RETURNING *`,
-        [company_name, sector, address, logo_url, nombre_employes, telephone, description, req.user.id]
+        [company_name, sector, address, finalLogoUrl, nombre_employes, telephone, description, req.user.id]
       );
 
       res.status(200).json({
@@ -118,7 +132,7 @@ router.post('/profile', authenticateToken, async (req, res) => {
          (user_id, company_name, sector, address, logo_url, nombre_employes, telephone, description)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [req.user.id, company_name, sector, address, logo_url, nombre_employes, telephone, description]
+        [req.user.id, company_name, sector, address, finalLogoUrl, nombre_employes, telephone, description]
       );
 
       res.status(201).json({
