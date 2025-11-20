@@ -160,7 +160,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-fade-in p-4 sm:p-0">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in pl-10 pr-4">
       {/* En-tête professionnel */}
       <div className="flex items-center justify-between animate-slide-down">
         <div>

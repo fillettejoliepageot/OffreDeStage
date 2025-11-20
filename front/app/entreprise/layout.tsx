@@ -15,7 +15,7 @@ export default function EntrepriseLayout({
       <CompanyProfileProvider>
         <div className="min-h-screen bg-background">
           <CompanyNav />
-          <main className="container py-8">{children}</main>
+          <main className="container py-8 pl-10 pr-4">{children}</main>
         </div>
       </CompanyProfileProvider>
     </ProtectedRoute>

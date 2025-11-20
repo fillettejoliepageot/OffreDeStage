@@ -285,7 +285,7 @@ export default function OffresPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pl-10 pr-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground text-balance">Offres de stage</h1>
@@ -360,7 +360,7 @@ export default function OffresPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 place-items-center">
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filteredOffers.map((offer, index) => (
           <Card 
             key={offer.id} 

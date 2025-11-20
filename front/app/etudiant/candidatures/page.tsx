@@ -188,7 +188,7 @@ export default function CandidaturesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pl-10 pr-4">
       <div>
         <h1 className="text-3xl font-bold text-foreground text-balance">Mes candidatures</h1>
         <p className="text-muted-foreground mt-2">Suivez l'état de vos candidatures en temps réel</p>
@@ -258,7 +258,7 @@ export default function CandidaturesPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {filteredCandidatures.length === 0 ? (
           <div className="col-span-2 flex flex-col items-center justify-center py-12 text-center">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
@@ -273,80 +273,87 @@ export default function CandidaturesPage() {
           filteredCandidatures.map((candidature) => (
           <Card 
             key={candidature.id} 
-            className={`hover:border-primary/50 transition-all hover:shadow-md ${
-              candidature.statut !== "pending" ? "border-blue-200 bg-blue-50/30" : ""
+            className={`relative overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
+              candidature.statut === "accepted"
+                ? "border-emerald-500/70"
+                : candidature.statut === "rejected"
+                ? "border-destructive/70"
+                : "border-border hover:border-primary/50"
             }`}
           >
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-foreground text-balance">{candidature.offre_title}</h3>
-                      {candidature.statut !== "pending" && (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                          Nouvelle réponse
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{candidature.company_name}</span>
-                    </div>
+            <CardContent className="pt-5 pb-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base md:text-lg font-semibold text-foreground text-balance">
+                      {candidature.offre_title}
+                    </h3>
+                    {candidature.statut !== "pending" && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] md:text-xs">
+                        Nouvelle réponse
+                      </Badge>
+                    )}
                   </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span className="font-medium">{candidature.company_name}</span>
+                  </div>
+                </div>
+                <div className="shrink-0">
                   {getStatusBadge(candidature.statut)}
                 </div>
+              </div>
 
-                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                  {candidature.offre_localisation && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{candidature.offre_localisation}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{getStageDuration(candidature.offre_date_debut, candidature.offre_date_fin)}</span>
+              <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-muted-foreground">
+                {candidature.offre_localisation && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{candidature.offre_localisation}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>Postulé le {new Date(candidature.date_candidature).toLocaleDateString('fr-FR')}</span>
-                  </div>
+                )}
+                <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{getStageDuration(candidature.offre_date_debut, candidature.offre_date_fin)}</span>
                 </div>
-
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <MessageSquare className="h-3 w-3" />
-                    <span>{getTimeAgo(candidature.date_candidature)}</span>
-                  </div>
-                  {candidature.statut !== "pending" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteCandidature(candidature.id)}
-                      disabled={deletingId === candidature.id}
-                    >
-                      {deletingId === candidature.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Trash2 className="h-3 w-3" />
-                          Supprimer
-                        </>
-                      )}
-                    </Button>
-                  )}
+                <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>Postulé le {new Date(candidature.date_candidature).toLocaleDateString('fr-FR')}</span>
                 </div>
+              </div>
 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent">
-                      <Eye className="h-4 w-4" />
-                      Voir les détails
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between gap-2 border-t pt-2 text-[11px] md:text-xs text-muted-foreground">
+                <div className="inline-flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" />
+                  <span>{getTimeAgo(candidature.date_candidature)}</span>
+                </div>
+                {candidature.statut !== "pending" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1 text-[11px] md:text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDeleteCandidature(candidature.id)}
+                    disabled={deletingId === candidature.id}
+                  >
+                    {deletingId === candidature.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 className="h-3 w-3" />
+                        Supprimer
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full gap-2 bg-transparent justify-center mt-2">
+                    <Eye className="h-4 w-4" />
+                    Voir les détails
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="text-2xl text-balance">{candidature.offre_title}</DialogTitle>
                       <DialogDescription className="flex items-center gap-2 text-base">
@@ -461,8 +468,7 @@ export default function CandidaturesPage() {
                       </div>
                     </div>
                   </DialogContent>
-                </Dialog>
-              </div>
+              </Dialog>
             </CardContent>
           </Card>
           ))
