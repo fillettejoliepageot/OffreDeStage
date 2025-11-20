@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
@@ -38,6 +39,17 @@ export default function LoginPage() {
   const [errorModalMessage, setErrorModalMessage] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  // Rotation des images (entreprise / etudiant)
+  const [currentImage, setCurrentImage] = useState<"entreprise" | "etudiant">("entreprise")
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev === "entreprise" ? "etudiant" : "entreprise"))
+    }, 6000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // États de validation
   const [emailValid, setEmailValid] = useState<boolean | null>(null)
@@ -130,192 +142,211 @@ export default function LoginPage() {
         variant: "destructive",
       })
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
-      <div 
-        className="w-full max-w-md space-y-6"
+      <div
+        className="w-full max-w-5xl max-h-[600px] bg-background/80 backdrop-blur-md shadow-lg rounded-2xl overflow-hidden flex flex-col md:flex-row"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateY(0)' : 'translateY(20px)',
           transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
         }}
       >
-        <div 
-          className="text-center space-y-2"
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.2s both' : 'none'
-          }}
-        >
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold text-xl mb-4 group">
-            <GraduationCap className="h-6 w-6 text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
-            <span>EspaceStage</span>
-          </Link>
-          <h1 className="text-3xl font-bold tracking-tight">Bon retour !</h1>
-          <p className="text-muted-foreground">Connectez-vous à votre compte</p>
+        {/* Colonne image gauche */}
+        <div className="relative hidden md:block md:w-1/2 bg-muted">
+          {/* Bouton retour en haut à gauche de la photo */}
+          <div className="absolute top-4 left-4 z-20">
+            <Button variant="ghost" asChild className="group bg-background/70 hover:bg-background">
+              <Link href="/" className="gap-2">
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                Retour à l'accueil
+              </Link>
+            </Button>
+          </div>
+
+          <div className="absolute inset-0">
+            <Image
+              src={currentImage === "entreprise" ? "/entreprise.png" : "/etudiant.png"}
+              alt={currentImage === "entreprise" ? "Espace entreprise" : "Espace étudiant"}
+              fill
+              sizes="50vw"
+              priority
+              className="object-cover transition-opacity duration-700 ease-in-out" 
+            />
+          </div>
+          {/* Overlay léger sans texte pour l’esthétique */}
+          <div className="relative z-10 h-full w-full bg-gradient-to-t from-background/40 via-background/10 to-transparent" />
         </div>
 
-        <Card 
-          ref={cardRef}
-          className={`border-2 transition-all duration-300 ${shake ? 'animate-shake' : ''}`}
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.4s both' : 'none'
-          }}
-        >
-          <CardHeader>
-            <CardTitle>Connexion</CardTitle>
-            <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
-          </CardHeader>
-          <div>
-            <CardContent className="space-y-4">
-              {error && isBlocked && (
-                <Alert variant="destructive" className="border-2">
-                  <Ban className="h-5 w-5" />
-                  <AlertTitle className="font-bold text-lg">Compte bloqué</AlertTitle>
-                  <AlertDescription className="mt-2 space-y-2">
-                    <p className="font-medium">{error}</p>
-                    <p className="text-sm">
-                      Votre compte a été suspendu par un administrateur. 
-                      Pour plus d'informations ou pour contester cette décision, 
-                      veuillez contacter le support à{" "}
-                      <a href="mailto:support@stageconnect.com" className="underline font-medium">
-                        support@stageconnect.com
-                      </a>
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {error && !isBlocked && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+        {/* Colonne formulaire droite */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-8">
+          <div 
+            className="w-full max-w-md space-y-6"
+          >
+            <div 
+              className="text-center space-y-2"
+              style={{
+                animation: mounted ? 'fadeInUp 0.6s ease-out 0.2s both' : 'none'
+              }}
+            >
+              <Link href="/" className="inline-flex items-center gap-2 font-semibold text-xl mb-4 group">
+                <GraduationCap className="h-6 w-6 text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
+                <span>EspaceStage</span>
+              </Link>
+              <h1 className="text-3xl font-bold tracking-tight">Bon retour !</h1>
+              <p className="text-muted-foreground">Connectez-vous à votre compte</p>
+            </div>
 
-              <div className="space-y-2 group">
-                <Label htmlFor="email" className="group-focus-within:text-primary transition-colors">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="votre.email@exemple.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className={`transition-all duration-300 focus:scale-[1.02] focus:shadow-md pr-10 ${
-                      emailValid === true ? 'border-green-500 focus:ring-green-500' : 
-                      emailValid === false ? 'border-red-500 focus:ring-red-500' : ''
-                    }`}
-                  />
-                  {emailValid !== null && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {emailValid ? (
-                        <Check className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <X className="h-5 w-5 text-red-500" />
+            <Card 
+              ref={cardRef}
+              className={`border-2 transition-all duration-300 ${shake ? 'animate-shake' : ''}`}
+              style={{
+                animation: mounted ? 'fadeInUp 0.6s ease-out 0.4s both' : 'none'
+              }}
+            >
+              <CardHeader>
+                <CardTitle>Connexion</CardTitle>
+                <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
+              </CardHeader>
+              <div>
+                <CardContent className="space-y-4">
+                  {error && isBlocked && (
+                    <Alert variant="destructive" className="border-2">
+                      <Ban className="h-5 w-5" />
+                      <AlertTitle className="font-bold text-lg">Compte bloqué</AlertTitle>
+                      <AlertDescription className="mt-2 space-y-2">
+                        <p className="font-medium">{error}</p>
+                        <p className="text-sm">
+                          Votre compte a été suspendu par un administrateur. 
+                          Pour plus d'informations ou pour contester cette décision, 
+                          veuillez contacter le support à{" "}
+                          <a href="mailto:support@stageconnect.com" className="underline font-medium">
+                            support@stageconnect.com
+                          </a>
+                        </p>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {error && !isBlocked && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2 group">
+                    <Label htmlFor="email" className="group-focus-within:text-primary transition-colors">Email</Label>
+                    <div className="relative">
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="votre.email@exemple.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className={`transition-all duration-300 focus:scale-[1.02] focus:shadow-md pr-10 ${
+                          emailValid === true ? 'border-green-500 focus:ring-green-500' : 
+                          emailValid === false ? 'border-red-500 focus:ring-red-500' : ''
+                        }`}
+                      />
+                      {emailValid !== null && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {emailValid ? (
+                            <Check className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <X className="h-5 w-5 text-red-500" />
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                {emailValid === false && (
-                  <p className="text-xs text-red-500">Veuillez entrer une adresse email valide</p>
-                )}
-              </div>
+                    {emailValid === false && (
+                      <p className="text-xs text-red-500">Veuillez entrer une adresse email valide</p>
+                    )}
+                  </div>
 
-              <div className="space-y-2 group">
-                <Label htmlFor="password" className="group-focus-within:text-primary transition-colors">Mot de passe</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onBlur={() => setPasswordTouched(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleSubmit(e)
-                      }
-                    }}
-                    required
-                    className={`transition-all duration-300 focus:scale-[1.02] focus:shadow-md pr-10 ${
-                      passwordTouched && password.length > 0 && password.length < 6 ? 'border-amber-500 focus:ring-amber-500' : ''
-                    }`}
-                  />
-                  <Button
+                  <div className="space-y-2 group">
+                    <Label htmlFor="password" className="group-focus-within:text-primary transition-colors">Mot de passe</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onBlur={() => setPasswordTouched(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleSubmit(e)
+                          }
+                        }}
+                        required
+                        className={`transition-all duration-300 focus:scale-[1.02] focus:shadow-md pr-10 ${
+                          passwordTouched && password.length > 0 && password.length < 6 ? 'border-amber-500 focus:ring-amber-500' : ''
+                        }`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                    {passwordTouched && password.length > 0 && password.length < 6 && (
+                      <p className="text-xs text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Le mot de passe doit contenir au moins 6 caractères
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <Link href="#" className="text-primary hover:underline">
+                      Mot de passe oublié ?
+                    </Link>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="flex flex-col gap-4">
+                  <Button 
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={(e) => handleSubmit(e)}
+                    className="w-full group relative overflow-hidden" 
+                    disabled={isLoading}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Connexion...
+                      </>
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <>
+                        <span className="relative z-10">Se connecter</span>
+                        <span className="absolute inset-0 bg-primary/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
+                      </>
                     )}
                   </Button>
-                </div>
-                {passwordTouched && password.length > 0 && password.length < 6 && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    Le mot de passe doit contenir au moins 6 caractères
-                  </p>
-                )}
-              </div>
 
-              <div className="flex items-center justify-between text-sm">
-                <Link href="#" className="text-primary hover:underline">
-                  Mot de passe oublié ?
-                </Link>
+                  <div className="text-sm text-center text-muted-foreground">
+                    Pas encore de compte ?{" "}
+                    <Link href="/auth/register" className="text-primary font-medium hover:underline">
+                      S'inscrire
+                    </Link>
+                  </div>
+                </CardFooter>
               </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col gap-4">
-              <Button 
-                type="button"
-                onClick={(e) => handleSubmit(e)}
-                className="w-full group relative overflow-hidden" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connexion...
-                  </>
-                ) : (
-                  <>
-                    <span className="relative z-10">Se connecter</span>
-                    <span className="absolute inset-0 bg-primary/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
-                  </>
-                )}
-              </Button>
-
-              <div className="text-sm text-center text-muted-foreground">
-                Pas encore de compte ?{" "}
-                <Link href="/auth/register" className="text-primary font-medium hover:underline">
-                  S'inscrire
-                </Link>
-              </div>
-            </CardFooter>
+            </Card>
           </div>
-        </Card>
-
-        <div 
-          className="text-center"
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.6s both' : 'none'
-          }}
-        >
-          <Button variant="ghost" asChild className="group">
-            <Link href="/" className="gap-2">
-              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              Retour à l'accueil
-            </Link>
-          </Button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
@@ -35,6 +36,9 @@ export default function RegisterPage() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [registeredUser, setRegisteredUser] = useState<{ name: string, role: "student" | "company" } | null>(null)
 
+  // Rotation des images (entreprise / etudiant)
+  const [currentImage, setCurrentImage] = useState<"entreprise" | "etudiant">("entreprise")
+
   // États de validation
   const [passwordValidation, setPasswordValidation] = useState({
     minLength: false,
@@ -48,6 +52,14 @@ export default function RegisterPage() {
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev === "entreprise" ? "etudiant" : "entreprise"))
+    }, 6000)
+
+    return () => clearInterval(interval)
   }, [])
 
   // Validation de l'email en temps réel
@@ -197,41 +209,69 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
-      <div 
-        className="w-full max-w-md space-y-6"
+      <div
+        className="w-full max-w-5xl max-h-[600px] bg-background/80 backdrop-blur-md shadow-lg rounded-2xl overflow-hidden flex flex-col md:flex-row"
         style={{
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateY(0)' : 'translateY(20px)',
           transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
         }}
       >
-        <div 
-          className="text-center space-y-2"
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.2s both' : 'none'
-          }}
-        >
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold text-xl mb-4 group">
-            <GraduationCap className="h-6 w-6 text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
-            <span>EspaceStage</span>
-          </Link>
-          <h1 className="text-3xl font-bold tracking-tight">Créer un compte</h1>
-          <p className="text-muted-foreground">Rejoignez notre communauté dès aujourd'hui</p>
+        {/* Colonne image gauche */}
+        <div className="relative hidden md:block md:w-1/2 bg-muted">
+          {/* Bouton retour en haut à gauche de la photo */}
+          <div className="absolute top-4 left-4 z-20">
+            <Button variant="ghost" asChild className="group bg-background/70 hover:bg-background">
+              <Link href="/" className="gap-2">
+                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                Retour à l'accueil
+              </Link>
+            </Button>
+          </div>
+
+          <div className="absolute inset-0">
+            <Image
+              src={currentImage === "entreprise" ? "/entreprise.png" : "/etudiant.png"}
+              alt={currentImage === "entreprise" ? "Espace entreprise" : "Espace étudiant"}
+              fill
+              sizes="50vw"
+              priority
+              className="object-cover transition-opacity duration-700 ease-in-out" 
+            />
+          </div>
+          <div className="relative z-10 h-full w-full bg-gradient-to-t from-background/40 via-background/10 to-transparent" />
         </div>
 
-        <Card 
-          ref={cardRef}
-          className={`border-2 transition-all duration-300 ${shake ? 'animate-shake' : ''}`}
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.4s both' : 'none'
-          }}
-        >
-          <CardHeader>
-            <CardTitle>Inscription</CardTitle>
-            <CardDescription>Remplissez le formulaire pour créer votre compte</CardDescription>
+        {/* Colonne formulaire droite */}
+        <div className="w-full md:w-1/2 flex items-center justify-center p-4 md:p-8">
+          <div 
+            className="w-full max-w-md space-y-6"
+          >
+            <div 
+              className="text-center space-y-2"
+              style={{
+                animation: mounted ? 'fadeInUp 0.6s ease-out 0.2s both' : 'none'
+              }}
+            >
+              <Link href="/" className="inline-flex items-center gap-2 font-semibold text-xl mb-4 group">
+                <GraduationCap className="h-6 w-6 text-primary group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
+                <span>EspaceStage</span>
+              </Link>
+            </div>
+
+            <Card 
+              ref={cardRef}
+              className={`border-2 transition-all duration-300 ${shake ? 'animate-shake' : ''}`}
+              style={{
+                animation: mounted ? 'fadeInUp 0.6s ease-out 0.4s both' : 'none'
+              }}
+            >
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-3xl font-bold tracking-tight">Créer un compte</CardTitle>
+            <CardDescription>Rejoignez notre communauté dès aujourd'hui</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               {error && (
                 <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-3 text-sm">
                   {error}
@@ -469,18 +509,7 @@ export default function RegisterPage() {
           </form>
         </Card>
 
-        <div 
-          className="text-center"
-          style={{
-            animation: mounted ? 'fadeInUp 0.6s ease-out 0.6s both' : 'none'
-          }}
-        >
-          <Button variant="ghost" asChild className="group">
-            <Link href="/" className="gap-2">
-              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              Retour à l'accueil
-            </Link>
-          </Button>
+          </div>
         </div>
       </div>
 
