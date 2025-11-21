@@ -34,7 +34,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  // Timeout augmenté pour éviter les erreurs sur les requêtes un peu longues
+  timeout: 30000,
   // Supprimer les logs Axios par défaut
   validateStatus: function (status) {
     return status >= 200 && status < 600; // Accepter tous les status pour gérer nous-mêmes
@@ -82,14 +83,14 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Erreur de connexion au serveur (pas de réponse)
+    // Erreur de connexion au serveur (pas de réponse ou timeout)
     if (!error.response) {
       const isPasswordChangeError = error.config?.url?.includes('/change-password');
       const isLoginError = error.config?.url?.includes('/auth/login');
       
       if (typeof window !== 'undefined' && !isPasswordChangeError && !isLoginError) {
-        console.error('❌ Erreur de connexion au backend:', error.message);
-        console.error('🔍 Vérifiez que le backend tourne sur http://localhost:5000');
+        console.error('❌ Erreur de connexion au backend (timeout ou serveur indisponible):', error.message);
+        console.error('🔍 Vérifiez que le backend tourne sur', API_BASE_URL);
       }
     }
     
