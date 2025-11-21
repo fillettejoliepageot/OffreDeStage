@@ -74,7 +74,7 @@ export function AdminNav() {
                     className="object-contain"
                   />
                 </div>
-                <span className="font-semibold text-lg hidden sm:inline">Admin Panel</span>
+                <span className="font-semibold text-lg hidden sm:inline">Admin</span>
               </div>
             </div>
           </div>
@@ -98,7 +98,7 @@ export function AdminNav() {
                   className="object-contain"
                 />
               </div>
-              <span className="font-semibold text-lg hidden sm:inline">Admin Panel</span>
+              <span className="font-semibold text-lg hidden sm:inline">Admin</span>
             </Link>
           </div>
 
