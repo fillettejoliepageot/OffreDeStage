@@ -1,12 +1,29 @@
 const nodemailer = require('nodemailer');
 
-// Configuration du transporteur email
+// ======================================================
+// 🔧 TRANSPORTEUR SMTP COMPATIBLE GMAIL + RENDER
+// (service: 'gmail' NE MARCHE PAS SUR RENDER)
+// ======================================================
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // obligatoire pour Gmail + Render
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD, // Mot de passe d'application Gmail
+    pass: process.env.EMAIL_PASSWORD, // mot de passe d'application Gmail
   },
+  connectionTimeout: 20000,
+  socketTimeout: 20000,
+  greetingTimeout: 20000,
+});
+
+// Vérification (important pour debugger Render)
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ Erreur SMTP:", error);
+  } else {
+    console.log("✅ SMTP Gmail opérationnel !");
+  }
 });
 
 /**
@@ -207,15 +224,6 @@ const sendCandidatureStatusEmail = async ({
 
 /**
  * Envoyer un email à l'entreprise lors d'une nouvelle candidature
- * @param {Object} options - Options de l'email
- * @param {string} options.companyEmail - Email de l'entreprise
- * @param {string} options.companyName - Nom de l'entreprise
- * @param {string} options.studentName - Nom de l'étudiant
- * @param {string} options.studentEmail - Email de l'étudiant
- * @param {string} options.offreTitle - Titre de l'offre
- * @param {string} options.offreId - ID de l'offre
- * @param {string} options.candidatureId - ID de la candidature
- * @param {string} options.message - Message de motivation
  */
 const sendNewCandidatureEmail = async ({
   companyEmail,

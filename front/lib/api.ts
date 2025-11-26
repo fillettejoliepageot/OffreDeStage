@@ -3,7 +3,7 @@ import axios from 'axios';
 // ==========================
 // URL de base de l'API
 // ==========================
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://offredestage2.onrender.com/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://offredestage-2.onrender.com/api';
 
 // ==========================
 // Supprimer les erreurs Axios internes dans la console
@@ -16,7 +16,8 @@ if (typeof window !== 'undefined') {
       (errorText.includes('settle') && errorText.includes('webpack-internal')) ||
       (errorText.includes('onloadend') && errorText.includes('webpack-internal')) ||
       (errorText.includes('xhr.js') && errorText.includes('webpack-internal')) ||
-      (errorText.includes('api.ts') && errorText.includes('webpack-internal'));
+      (errorText.includes('api.ts') && errorText.includes('webpack-internal')) ||
+      (errorText.includes('handletimeout') && errorText.includes('webpack-internal'));
 
     if (isAxiosInternalError) return;
     originalConsoleError.apply(console, args);
@@ -31,7 +32,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 400000,
   validateStatus: (status) => status >= 200 && status < 600,
 });
 
