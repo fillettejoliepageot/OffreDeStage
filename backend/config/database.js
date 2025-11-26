@@ -27,9 +27,10 @@ pool.on('connect', () => {
   console.log('✅ Connexion réussie à PostgreSQL Render');
 });
 
+// Sur Render, des connexions peuvent être coupées (idle timeout, reboot, etc.).
+// On loggue l'erreur mais on ne coupe pas le process : le pool recréera une connexion.
 pool.on('error', (err) => {
-  console.error('❌ Erreur client PostgreSQL:', err);
-  process.exit(-1);
+  console.error('❌ Erreur client PostgreSQL (connexion interrompue) :', err);
 });
 
 // Fonction pour tester la connexion
