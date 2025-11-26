@@ -1,30 +1,9 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 // ======================================================
-// 🔧 TRANSPORTEUR SMTP COMPATIBLE GMAIL + RENDER
-// (service: 'gmail' NE MARCHE PAS SUR RENDER)
+// 🔧 SERVICE EMAIL VIA RESEND (HTTP, COMPATIBLE RENDER)
 // ======================================================
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // obligatoire pour Gmail + Render
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD, // mot de passe d'application Gmail
-  },
-  connectionTimeout: 20000,
-  socketTimeout: 20000,
-  greetingTimeout: 20000,
-});
-
-// Vérification (important pour debugger Render)
-transporter.verify((error) => {
-  if (error) {
-    console.error("❌ Erreur SMTP:", error);
-  } else {
-    console.log("✅ SMTP Gmail opérationnel !");
-  }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Envoyer un email de notification de candidature acceptée
@@ -206,18 +185,17 @@ const sendCandidatureStatusEmail = async ({
         </html>
       `;
 
-    const mailOptions = {
-      from: `"EspaceStage" <${process.env.EMAIL_USER}>`,
+    const emailResponse = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'EspaceStage <onboarding@resend.dev>',
       to: studentEmail,
       subject: subject,
       html: htmlContent,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email envoyé avec succès:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('Email envoyé avec succès via Resend:', emailResponse.id);
+    return { success: true, messageId: emailResponse.id };
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email:', error);
+    console.error("Erreur lors de l'envoi de l'email:", error);
     return { success: false, error: error.message };
   }
 };
@@ -236,7 +214,7 @@ const sendNewCandidatureEmail = async ({
   message,
 }) => {
   try {
-    const subject = `📩 Nouvelle candidature pour "${offreTitle}"`;
+    const subject = `Nouvelle candidature pour "${offreTitle}"`;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -302,7 +280,7 @@ const sendNewCandidatureEmail = async ({
       </head>
       <body>
         <div class="header">
-          <h1 style="margin: 0;">📩 Nouvelle Candidature</h1>
+          <h1 style="margin: 0;">Nouvelle Candidature</h1>
         </div>
         <div class="content">
           <p>Bonjour <strong>${companyName}</strong>,</p>
@@ -310,15 +288,15 @@ const sendNewCandidatureEmail = async ({
           <p>Vous avez reçu une nouvelle candidature pour votre offre de stage !</p>
           
           <div class="info-box">
-            <p><strong>📋 Offre de stage :</strong> ${offreTitle}</p>
-            <p><strong>👤 Candidat :</strong> ${studentName}</p>
-            <p><strong>📧 Email :</strong> ${studentEmail}</p>
-            <p><strong>📅 Date de candidature :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+            <p><strong> Offre de stage :</strong> ${offreTitle}</p>
+            <p><strong> Candidat :</strong> ${studentName}</p>
+            <p><strong> Email :</strong> ${studentEmail}</p>
+            <p><strong> Date de candidature :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
           </div>
           
           ${message ? `
           <div class="message-box">
-            <p><strong>💬 Message de motivation :</strong></p>
+            <p><strong> Message de motivation :</strong></p>
             <p>${message}</p>
           </div>
           ` : ''}
@@ -337,29 +315,28 @@ const sendNewCandidatureEmail = async ({
             </a>
           </div>
           
-          <p>Bonne chance dans votre recherche du candidat idéal ! 🎯</p>
+          <p>Bonne chance dans votre recherche du candidat idéal ! </p>
           
           <div class="footer">
             <p>Cet email a été envoyé automatiquement par EspaceStage</p>
-            <p>© ${new Date().getFullYear()} EspaceStage - Plateforme de gestion des stages</p>
+            <p> ${new Date().getFullYear()} EspaceStage - Plateforme de gestion des stages</p>
           </div>
         </div>
       </body>
       </html>
     `;
 
-    const mailOptions = {
-      from: `"EspaceStage" <${process.env.EMAIL_USER}>`,
+    const emailResponse = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'EspaceStage <onboarding@resend.dev>',
       to: companyEmail,
       subject: subject,
       html: htmlContent,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email de nouvelle candidature envoyé avec succès:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('Email de nouvelle candidature envoyé via Resend:', emailResponse.id);
+    return { success: true, messageId: emailResponse.id };
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email de nouvelle candidature:', error);
+    console.error("Erreur lors de l'envoi de l'email de nouvelle candidature:", error);
     return { success: false, error: error.message };
   }
 };
