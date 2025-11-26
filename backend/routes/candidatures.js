@@ -116,7 +116,7 @@ router.post('/', candidatureLimiter, authenticateToken, async (req, res) => {
 
     // Envoyer un email à l'entreprise pour notifier de la nouvelle candidature
     try {
-      await sendNewCandidatureEmail({
+      const emailResult = await sendNewCandidatureEmail({
         companyEmail: offre.company_email,
         companyName: offre.company_name,
         studentName: `${student.first_name} ${student.last_name}`,
@@ -126,9 +126,17 @@ router.post('/', candidatureLimiter, authenticateToken, async (req, res) => {
         candidatureId: candidature.id,
         message: message || '',
       });
-      console.log(`✅ Email de nouvelle candidature envoyé à ${offre.company_email}`);
+
+      if (emailResult && emailResult.success) {
+        console.log(`✅ Email de nouvelle candidature envoyé à ${offre.company_email}`);
+      } else {
+        console.error(
+          "⚠️  Erreur lors de l'envoi de l'email de nouvelle candidature:",
+          emailResult?.error || 'Erreur inconnue'
+        );
+      }
     } catch (emailError) {
-      console.error('⚠️  Erreur lors de l\'envoi de l\'email à l\'entreprise:', emailError);
+      console.error("⚠️  Erreur lors de l'envoi de l'email à l'entreprise (exception):", emailError);
       // On ne bloque pas la candidature si l'email échoue
     }
 
@@ -384,16 +392,24 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
     // Envoyer un email à l'étudiant si le statut est accepté ou refusé
     if (statut === 'accepted' || statut === 'rejected') {
       try {
-        await sendCandidatureStatusEmail({
+        const emailResult = await sendCandidatureStatusEmail({
           studentEmail: candidatureInfo.student_email,
           studentName: `${candidatureInfo.first_name} ${candidatureInfo.last_name}`,
           offreTitle: candidatureInfo.offre_title,
           companyName: candidatureInfo.company_name,
           statut: statut,
         });
-        console.log(`Email de notification envoyé à ${candidatureInfo.student_email}`);
+
+        if (emailResult && emailResult.success) {
+          console.log(`Email de notification envoyé à ${candidatureInfo.student_email}`);
+        } else {
+          console.error(
+            "Erreur lors de l'envoi de l'email de notification:",
+            emailResult?.error || 'Erreur inconnue'
+          );
+        }
       } catch (emailError) {
-        console.error('Erreur lors de l\'envoi de l\'email:', emailError);
+        console.error("Erreur lors de l'envoi de l'email (exception):", emailError);
         // On continue même si l'email échoue
       }
     }
