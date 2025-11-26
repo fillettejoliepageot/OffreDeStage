@@ -192,7 +192,7 @@ const sendCandidatureStatusEmail = async ({
       html: htmlContent,
     });
 
-    const messageId = emailResponse?.data?.id || emailResponse?.id;
+   const messageId = emailResponse?.id;
     console.log('Email envoyé avec succès via Resend:', messageId);
     return { success: true, messageId };
   } catch (error) {
