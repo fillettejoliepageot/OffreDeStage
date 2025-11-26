@@ -124,11 +124,11 @@ const startServer = async () => {
     // Tester la connexion à la base de données
     const dbConnected = await testConnection();
     
-    if (!dbConnected) {
-      console.error('❌ Impossible de se connecter à la base de données');
-      console.error('Vérifiez vos paramètres dans le fichier .env');
-      process.exit(1);
-    }
+  if (!dbConnected) {
+  console.warn('⚠️ Impossible de se connecter à la base de données au démarrage.');
+  console.warn('➡️ Le serveur démarre quand même. Render va réessayer automatiquement.');
+}
+
 
     app.listen(PORT, () => {
       console.log('\n' + '='.repeat(50));
