@@ -192,8 +192,9 @@ const sendCandidatureStatusEmail = async ({
       html: htmlContent,
     });
 
-    console.log('Email envoyé avec succès via Resend:', emailResponse.id);
-    return { success: true, messageId: emailResponse.id };
+    const messageId = emailResponse?.data?.id || emailResponse?.id;
+    console.log('Email envoyé avec succès via Resend:', messageId);
+    return { success: true, messageId };
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email:", error);
     return { success: false, error: error.message };
@@ -333,8 +334,9 @@ const sendNewCandidatureEmail = async ({
       html: htmlContent,
     });
 
-    console.log('Email de nouvelle candidature envoyé via Resend:', emailResponse.id);
-    return { success: true, messageId: emailResponse.id };
+    const messageId = emailResponse?.data?.id || emailResponse?.id;
+    console.log('Email de nouvelle candidature envoyé via Resend:', messageId);
+    return { success: true, messageId };
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email de nouvelle candidature:", error);
     return { success: false, error: error.message };
