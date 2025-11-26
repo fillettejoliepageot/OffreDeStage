@@ -185,16 +185,15 @@ const sendCandidatureStatusEmail = async ({
         </html>
       `;
 
-    const emailResponse = await resend.emails.send({
+    await resend.emails.send({
       from: process.env.EMAIL_FROM || 'EspaceStage <onboarding@resend.dev>',
       to: studentEmail,
       subject: subject,
       html: htmlContent,
     });
 
-   const messageId = emailResponse?.id;
-    console.log('Email envoyé avec succès via Resend:', messageId);
-    return { success: true, messageId };
+    console.log('Email envoyé avec succès via Resend');
+    return { success: true };
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email:", error);
     return { success: false, error: error.message };
@@ -327,16 +326,15 @@ const sendNewCandidatureEmail = async ({
       </html>
     `;
 
-    const emailResponse = await resend.emails.send({
+    await resend.emails.send({
       from: process.env.EMAIL_FROM || 'EspaceStage <onboarding@resend.dev>',
       to: companyEmail,
       subject: subject,
       html: htmlContent,
     });
 
-    const messageId = emailResponse?.data?.id || emailResponse?.id;
-    console.log('Email de nouvelle candidature envoyé via Resend:', messageId);
-    return { success: true, messageId };
+    console.log('Email de nouvelle candidature envoyé via Resend');
+    return { success: true };
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email de nouvelle candidature:", error);
     return { success: false, error: error.message };
