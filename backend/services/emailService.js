@@ -1,18 +1,39 @@
-const Resend = require("resend");
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require('nodemailer');
 
 // ======================================================
-// 🔧 Email service via Resend (compatible Render)
+// 🔧 TRANSPORTEUR SMTP COMPATIBLE GMAIL + RENDER
+// (service: 'gmail' NE MARCHE PAS SUR RENDER)
 // ======================================================
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // obligatoire pour Gmail + Render
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD, // mot de passe d'application Gmail
+  },
+  connectionTimeout: 20000,
+  socketTimeout: 20000,
+  greetingTimeout: 20000,
+});
+
+// Vérification (important pour debugger Render)
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ Erreur SMTP:", error);
+  } else {
+    console.log("✅ SMTP Gmail opérationnel !");
+  }
+});
 
 /**
- * Envoyer un email de notification de candidature acceptée ou rejetée
- * @param {Object} options
- * @param {string} options.studentEmail
- * @param {string} options.studentName
- * @param {string} options.offreTitle
- * @param {string} options.companyName
- * @param {string} options.statut
+ * Envoyer un email de notification de candidature acceptée
+ * @param {Object} options - Options de l'email
+ * @param {string} options.studentEmail - Email de l'étudiant
+ * @param {string} options.studentName - Nom de l'étudiant
+ * @param {string} options.offreTitle - Titre de l'offre
+ * @param {string} options.companyName - Nom de l'entreprise
+ * @param {string} options.statut - Statut de la candidature (accepted/rejected)
  */
 const sendCandidatureStatusEmail = async ({
   studentEmail,
@@ -22,10 +43,10 @@ const sendCandidatureStatusEmail = async ({
   statut,
 }) => {
   try {
-    const isAccepted = statut === "accepted";
+    const isAccepted = statut === 'accepted';
     const subject = isAccepted
-      ? "🎉 Votre candidature a été acceptée !"
-      : "Réponse à votre candidature";
+      ? '🎉 Votre candidature a été acceptée !'
+      : 'Réponse à votre candidature';
 
     const htmlContent = isAccepted
       ? `
@@ -33,12 +54,48 @@ const sendCandidatureStatusEmail = async ({
         <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .success-badge { background: #10b981; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin: 20px 0; font-weight: bold; }
-            .info-box { background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 5px; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .success-badge {
+              background: #10b981;
+              color: white;
+              padding: 10px 20px;
+              border-radius: 20px;
+              display: inline-block;
+              margin: 20px 0;
+              font-weight: bold;
+            }
+            .info-box {
+              background: white;
+              padding: 20px;
+              border-left: 4px solid #667eea;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 30px;
+              color: #666;
+              font-size: 14px;
+            }
           </style>
         </head>
         <body>
@@ -47,21 +104,30 @@ const sendCandidatureStatusEmail = async ({
           </div>
           <div class="content">
             <p>Bonjour <strong>${studentName}</strong>,</p>
-            <div class="success-badge">✓ CANDIDATURE ACCEPTÉE</div>
+            
+            <div class="success-badge">
+              ✓ CANDIDATURE ACCEPTÉE
+            </div>
+            
             <p>Nous avons le plaisir de vous informer que votre candidature a été <strong>acceptée</strong> !</p>
+            
             <div class="info-box">
               <h3>📋 Détails de l'offre</h3>
               <p><strong>Offre :</strong> ${offreTitle}</p>
               <p><strong>Entreprise :</strong> ${companyName}</p>
             </div>
+            
             <p>L'entreprise <strong>${companyName}</strong> a examiné votre profil et souhaite poursuivre avec vous.</p>
+            
             <p><strong>Prochaines étapes :</strong></p>
             <ul>
               <li>Consultez votre espace candidatures pour plus de détails</li>
               <li>L'entreprise vous contactera prochainement pour les prochaines étapes</li>
               <li>Préparez vos documents si nécessaire</li>
             </ul>
+            
             <p>Bonne chance pour la suite ! 🚀</p>
+            
             <div class="footer">
               <p>Cet email a été envoyé automatiquement par EspaceStage</p>
               <p>© ${new Date().getFullYear()} EspaceStage - Plateforme de gestion des stages</p>
@@ -75,11 +141,39 @@ const sendCandidatureStatusEmail = async ({
         <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: white; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 5px; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 10px 10px 0 0;
+            }
+            .content {
+              background: #f9f9f9;
+              padding: 30px;
+              border-radius: 0 0 10px 10px;
+            }
+            .info-box {
+              background: white;
+              padding: 20px;
+              border-left: 4px solid #667eea;
+              margin: 20px 0;
+              border-radius: 5px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 30px;
+              color: #666;
+              font-size: 14px;
+            }
           </style>
         </head>
         <body>
@@ -88,15 +182,21 @@ const sendCandidatureStatusEmail = async ({
           </div>
           <div class="content">
             <p>Bonjour <strong>${studentName}</strong>,</p>
+            
             <p>Nous vous remercions pour l'intérêt que vous avez porté à notre offre de stage.</p>
+            
             <div class="info-box">
               <h3>📋 Détails de l'offre</h3>
               <p><strong>Offre :</strong> ${offreTitle}</p>
               <p><strong>Entreprise :</strong> ${companyName}</p>
             </div>
+            
             <p>Après examen de votre candidature, nous avons le regret de vous informer que nous ne pourrons pas donner suite à votre demande pour cette offre.</p>
+            
             <p>Nous vous encourageons à continuer vos recherches et à postuler à d'autres offres qui correspondent à votre profil.</p>
+            
             <p>Nous vous souhaitons bonne chance dans vos recherches ! 💪</p>
+            
             <div class="footer">
               <p>Cet email a été envoyé automatiquement par EspaceStage</p>
               <p>© ${new Date().getFullYear()} EspaceStage - Plateforme de gestion des stages</p>
@@ -106,17 +206,18 @@ const sendCandidatureStatusEmail = async ({
         </html>
       `;
 
-    const emailResponse = await resend.emails.send({
-      from: process.env.EMAIL_FROM || "EspaceStage <onboarding@resend.dev>",
+    const mailOptions = {
+      from: `"EspaceStage" <${process.env.EMAIL_USER}>`,
       to: studentEmail,
       subject: subject,
       html: htmlContent,
-    });
+    };
 
-    console.log("Email envoyé avec succès via Resend:", emailResponse.id);
-    return { success: true, messageId: emailResponse.id };
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email envoyé avec succès:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Erreur lors de l'envoi de l'email:", error);
+    console.error('Erreur lors de l\'envoi de l\'email:', error);
     return { success: false, error: error.message };
   }
 };
@@ -142,14 +243,61 @@ const sendNewCandidatureEmail = async ({
       <html>
       <head>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-          .message-box { background: #e0e7ff; padding: 15px; border-radius: 8px; margin: 20px 0; font-style: italic; }
-          .button { display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; }
-          strong { color: #667eea; }
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+          }
+          .content {
+            background: #f9fafb;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+          }
+          .info-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+          }
+          .message-box {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-style: italic;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 12px;
+          }
+          strong {
+            color: #667eea;
+          }
         </style>
       </head>
       <body>
@@ -158,14 +306,23 @@ const sendNewCandidatureEmail = async ({
         </div>
         <div class="content">
           <p>Bonjour <strong>${companyName}</strong>,</p>
+          
           <p>Vous avez reçu une nouvelle candidature pour votre offre de stage !</p>
+          
           <div class="info-box">
             <p><strong>📋 Offre de stage :</strong> ${offreTitle}</p>
             <p><strong>👤 Candidat :</strong> ${studentName}</p>
             <p><strong>📧 Email :</strong> ${studentEmail}</p>
-            <p><strong>📅 Date de candidature :</strong> ${new Date().toLocaleDateString("fr-FR")}</p>
+            <p><strong>📅 Date de candidature :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
           </div>
-          ${message ? `<div class="message-box"><p><strong>💬 Message de motivation :</strong></p><p>${message}</p></div>` : ""}
+          
+          ${message ? `
+          <div class="message-box">
+            <p><strong>💬 Message de motivation :</strong></p>
+            <p>${message}</p>
+          </div>
+          ` : ''}
+          
           <p><strong>Prochaines étapes :</strong></p>
           <ul>
             <li>Consultez le profil complet du candidat sur votre tableau de bord</li>
@@ -173,10 +330,15 @@ const sendNewCandidatureEmail = async ({
             <li>Acceptez ou refusez la candidature</li>
             <li>Le candidat sera notifié automatiquement de votre décision</li>
           </ul>
+          
           <div style="text-align: center;">
-            <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/entreprise/candidatures" class="button">Voir la candidature</a>
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/entreprise/candidatures" class="button">
+              Voir la candidature
+            </a>
           </div>
+          
           <p>Bonne chance dans votre recherche du candidat idéal ! 🎯</p>
+          
           <div class="footer">
             <p>Cet email a été envoyé automatiquement par EspaceStage</p>
             <p>© ${new Date().getFullYear()} EspaceStage - Plateforme de gestion des stages</p>
@@ -186,17 +348,18 @@ const sendNewCandidatureEmail = async ({
       </html>
     `;
 
-    const emailResponse = await resend.emails.send({
-      from: process.env.EMAIL_FROM || "EspaceStage <onboarding@resend.dev>",
+    const mailOptions = {
+      from: `"EspaceStage" <${process.env.EMAIL_USER}>`,
       to: companyEmail,
       subject: subject,
       html: htmlContent,
-    });
+    };
 
-    console.log("Email de nouvelle candidature envoyé via Resend:", emailResponse.id);
-    return { success: true, messageId: emailResponse.id };
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email de nouvelle candidature envoyé avec succès:', info.messageId);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error("Erreur lors de l'envoi de l'email de nouvelle candidature:", error);
+    console.error('Erreur lors de l\'envoi de l\'email de nouvelle candidature:', error);
     return { success: false, error: error.message };
   }
 };
