@@ -1,124 +1,69 @@
-
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Configuration optimisée pour Render avec gestion des reconnexions
-const createPool = () => {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 
-      `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-    
-    // Configuration SSL pour Render
-    ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false,
-      sslmode: 'require'
-    } : false,
-
-    // Optimisation du pool de connexions pour Render
-    max: 5,                          // Réduit pour éviter la surcharge
-    min: 1,                          // Minimum de connexions maintenues
-    idleTimeoutMillis: 30000,        // 30 secondes d'inactivité max
-    connectionTimeoutMillis: 10000,  // 10 secondes max pour établir la connexion
-    query_timeout: 30000,            // 30 secondes max par requête
-    statement_timeout: 30000,        // 30 secondes max par statement
-    application_name: 'stage-app',   // Identifiant pour le monitoring
-    
-    // Gestion des reconnexions
-    allowExitOnIdle: true,
-    maxUses: 1000,                   // Recyclage plus fréquent des connexions
-    keepAlive: true,                 // Maintien des connexions actives
-    keepAliveInitialDelayMillis: 0,  // Vérification immédiate
-    
-    // Délai entre les tentatives de reconnexion
-    retry_strategy: (options) => {
-      if (options.error && options.error.code === 'PROTOCOL_CONNECTION_LOST') {
-        console.log('🔌 Connexion perdue, tentative de reconnexion...');
-        return 1000; // 1 seconde avant de réessayer
-      }
-      if (options.error) {
-        console.error('❌ Erreur de connexion:', options.error);
-      }
-      // Réessayer après 2 secondes par défaut
-      return 2000;
-    }
-  });
+// Configuration de base pour le pool de connexions
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 
+    `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
   
-  return pool;
-};
+  // Configuration SSL pour la production
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false,
+    sslmode: 'require'
+  } : false,
 
-// Création du pool avec gestion des erreurs
-try {
-  var pool = createPool();
-} catch (error) {
-  console.error('❌ Erreur critique lors de la création du pool de connexions:', error);
-  process.exit(1);
-}
-
-// Logs améliorés pour le suivi des connexions
-pool.on('connect', (client) => {
-  console.log('✅ Connexion PostgreSQL établie - Client ID:', process.pid);
+  // Paramètres du pool
+  max: 5,                          // Nombre maximum de clients dans le pool
+  min: 1,                          // Nombre minimum de clients dans le pool
+  idleTimeoutMillis: 30000,        // Temps d'inactivité avant libération
+  connectionTimeoutMillis: 2000,   // Délai de connexion
+  query_timeout: 30000,            // Timeout des requêtes
+  statement_timeout: 30000,        // Timeout des statements
+  application_name: 'stage-app'    // Nom de l'application pour le monitoring
 });
 
-pool.on('acquire', (client) => {
-  console.log('🔹 Client récupéré du pool - Total:', pool.totalCount, 'Idle:', pool.idleCount, 'Waiting:', pool.waitingCount);
+// Gestion des événements du pool
+pool.on('connect', () => {
+  console.log('✅ Nouvelle connexion établie avec la base de données');
+});
+
+pool.on('acquire', () => {
+  console.log(`🔹 Client récupéré du pool - Actifs: ${pool.totalCount - pool.idleCount}, En attente: ${pool.waitingCount}`);
 });
 
 pool.on('remove', () => {
-  console.log('🔌 Client retiré du pool');});
-
-// Gestion des erreurs améliorée
-// Gestion des erreurs améliorée avec reconnexion automatique
-pool.on('error', (err, client) => {
-  console.error('❌ Erreur PostgreSQL:', {
-    message: err.message,
-    code: err.code,
-    // Reconnexion automatique pour les erreurs de connexion
-    action: (err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'PROTOCOL_CONNECTION_LOST') 
-      ? 'Tentative de reconnexion...' 
-      : 'Vérifiez la configuration de la base de données',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Reconnexion automatique
-  if (err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
-    console.log('🔄 Tentative de reconnexion...');
-  }
+  console.log('🔌 Connexion au pool supprimée');
 });
 
-// Fonction pour tester la connexion avec reconnexion automatique
-const testConnection = async (maxRetries = 3, retryDelay = 2000) => {
-  let lastError;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const client = await pool.connect();
-      const result = await client.query('SELECT NOW()');
-      console.log(`✅ Connexion PostgreSQL réussie (tentative ${attempt}/${maxRetries})`);
-      console.log('🕐 Heure du serveur PostgreSQL:', result.rows[0].now);
-      client.release();
-      return true;
-    } catch (error) {
-      lastError = error;
-      console.warn(`⚠️  Échec de la connexion (${attempt}/${maxRetries}):`, error.message);
-      
-      if (attempt < maxRetries) {
-        console.log(`⏳ Nouvelle tentative dans ${retryDelay/1000} secondes...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-      }
-    }
+pool.on('error', (err) => {
+  console.error('❌ Erreur inattendue du pool de connexions:', {
+    message: err.message,
+    code: err.code,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
+// Fonction pour tester la connexion
+const testConnection = async () => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT NOW()');
+    console.log('✅ Test de connexion réussi');
+    console.log('🕐 Heure du serveur:', result.rows[0].now);
+    return true;
+  } catch (error) {
+    console.error('❌ Erreur de connexion:', error.message);
+    return false;
+  } finally {
+    client.release();
   }
-  
-  console.error('❌ Échec de la connexion après plusieurs tentatives:', lastError.message);
-  return false;
 };
 
-// Fonction pour vérifier la santé de la base de données
+// Vérification de l'état de la base de données
 const checkHealth = async () => {
+  const client = await pool.connect();
   try {
-    const client = await pool.connect();
     const result = await client.query('SELECT NOW() as time, pg_database_size(current_database()) as db_size, version() as version');
-    client.release();
     return {
       status: 'healthy',
       timestamp: new Date(),
@@ -139,18 +84,54 @@ const checkHealth = async () => {
       error: error.message,
       timestamp: new Date()
     };
+  } finally {
+    client.release();
   }
 };
+
+// Vérification périodique de la connexion
+const startHealthCheck = (interval = 30000) => {
+  const check = async () => {
+    try {
+      const health = await checkHealth();
+      if (health.status !== 'healthy') {
+        console.warn('⚠️  Problème de connexion à la base de données:', health.error);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification de santé:', error);
+    }
+  };
+  
+  // Exécuter immédiatement une première vérification
+  check().catch(console.error);
+  
+  // Puis à intervalle régulier
+  return setInterval(check, interval);
+};
+
+// Démarrer la vérification de santé
+const healthCheckInterval = startHealthCheck();
+
+// Nettoyage à l'arrêt du processus
+const cleanup = () => {
+  console.log('🧹 Nettoyage des connexions à la base de données...');
+  clearInterval(healthCheckInterval);
+  return pool.end().then(() => {
+    console.log('✅ Connexions à la base de données fermées avec succès');
+  }).catch(err => {
+    console.error('❌ Erreur lors de la fermeture des connexions:', err);
+  });
+};
+
+// Gestion des signaux d'arrêt
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
 
 module.exports = {
   pool,
   testConnection,
   checkHealth,
-  query: (text, params) => pool.query(text, params),
+  cleanup,
+  query: (text, params) => pool.query(text, params)
 };
-
-// module.exports = {
-//   pool,
-//   testConnection,
-//   query: (text, params) => pool.query(text, params),
 // };
