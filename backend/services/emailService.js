@@ -1,9 +1,22 @@
 const { Resend } = require('resend');
+require('dotenv').config();
 
 // ======================================================
 // 🔧 SERVICE EMAIL VIA RESEND (HTTP, COMPATIBLE RENDER)
 // ======================================================
-const resend = new Resend(process.env.RESEND_API_KEY);
+if (!process.env.RESEND_API_KEY) {
+  console.warn('⚠️  Avertissement: Aucune clé API Resend trouvée. Les emails ne seront pas envoyés.');
+  console.warn('   Pour activer l\'envoi d\'emails, définissez la variable d\'environnement RESEND_API_KEY');
+}
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : {
+  emails: {
+    send: async () => {
+      console.warn('⚠️  Avertissement: Tentative d\'envoi d\'email sans clé API Resend');
+      return { data: { id: 'mock-email-id' }, error: null };
+    }
+  }
+};
 
 /**
  * Envoyer un email de notification de candidature acceptée
