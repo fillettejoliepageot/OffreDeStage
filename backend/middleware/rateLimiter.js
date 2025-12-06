@@ -147,10 +147,11 @@ const apiLimiter = !isRateLimitingEnabled ? (req, res, next) => next() : rateLim
 // ==========================================
 // SPEED LIMITER (Ralentissement progressif)
 // ==========================================
-const speedLimiter = slowDown({
+// Ralentit les requêtes au lieu de les bloquer complètement
+const speedLimiter = !isRateLimitingEnabled ? (req, res, next) => next() : slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 50, // Commence à ralentir après 50 requêtes
-  delayMs: 100, // Ajoute 100ms de délai par requête après la limite
+  delayMs: (used) => (used - 50) * 100, // Ajoute 100ms de délai par requête supplémentaire
   maxDelayMs: 5000, // Délai maximum de 5 secondes
 });
 
