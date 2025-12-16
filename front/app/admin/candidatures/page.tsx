@@ -20,6 +20,7 @@ import { adminAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
 import { fr } from "date-fns/locale"
+import { TableActions } from "@/components/admin/TableActions"
 
 interface Candidature {
   id: string
@@ -44,7 +45,7 @@ export default function AdminCandidatures() {
   const [statutFilter, setStatutFilter] = useState<string>("tous")
   const [selectedCandidature, setSelectedCandidature] = useState<Candidature | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function AdminCandidatures() {
   )
 
   const handleDelete = async (candidatureId: string) => {
-    setIsDeleting(true)
+    setActionInProgress('delete')
     try {
       const response = await adminAPI.deleteCandidature(candidatureId)
       
@@ -94,19 +95,19 @@ export default function AdminCandidatures() {
           variant: "default",
         })
         
+        // Recharger la liste
         await loadCandidatures()
       }
     } catch (error: any) {
       console.error('Erreur:', error)
       toast({
         title: "❌ Erreur",
-        description: error.response?.data?.message || "Erreur lors de la suppression",
+        description: error.response?.data?.message || "Erreur lors de la suppression de la candidature",
         variant: "destructive",
       })
     } finally {
-      setIsDeleting(false)
+      setActionInProgress(null)
       setDeleteDialogOpen(false)
-      setSelectedCandidature(null)
     }
   }
 
@@ -294,30 +295,32 @@ export default function AdminCandidatures() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex justify-end space-x-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setSelectedCandidature(candidature)
                               setDetailsDialogOpen(true)
                             }}
-                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
                           >
-                            <FileText className="w-4 h-4 mr-1" />
-                            Détails
+                            Voir détails
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
+                            className="text-destructive hover:text-destructive"
                             onClick={() => {
                               setSelectedCandidature(candidature)
                               setDeleteDialogOpen(true)
                             }}
-                            disabled={isDeleting}
+                            disabled={!!actionInProgress}
                           >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Supprimer
+                            {actionInProgress === 'delete' ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>
@@ -340,19 +343,29 @@ export default function AdminCandidatures() {
               <strong>
                 {selectedCandidature?.student_first_name} {selectedCandidature?.student_last_name}
               </strong>{" "}
-              pour l'offre <strong>{selectedCandidature?.offre_title}</strong> ? Cette action est irréversible.
+              pour l'offre <strong>{selectedCandidature?.offre_title}</strong> ?
+              <br />
+              Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)} 
+              disabled={!!actionInProgress}
+            >
               Annuler
             </Button>
             <Button 
               variant="destructive" 
-              onClick={() => selectedCandidature && handleDelete(selectedCandidature.id)}
-              disabled={isDeleting}
+              onClick={() => {
+                if (selectedCandidature) {
+                  handleDelete(selectedCandidature.id)
+                }
+              }}
+              disabled={!!actionInProgress}
             >
-              {isDeleting ? (
+              {actionInProgress === 'delete' ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                   Suppression...
@@ -370,65 +383,82 @@ export default function AdminCandidatures() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Détails de la candidature</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4">
+                {selectedCandidature && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium">Étudiant</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.student_first_name} {selectedCandidature.student_last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.student_email}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.domaine_etude}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">Offre</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.offre_title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.company_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCandidature.offre_domaine}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium">Message de candidature</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                        {selectedCandidature.message || "Aucun message"}
+                      </p>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p>
+                        Candidature envoyée{" "}
+                        {formatDistanceToNow(new Date(selectedCandidature.date_candidature), {
+                          addSuffix: true,
+                          locale: fr
+                        })}
+                      </p>
+                      <div className="flex items-center mt-1">
+                        Statut :{" "}
+                        {selectedCandidature.statut === 'pending' ? (
+                          <Badge variant="outline" className="ml-2">
+                            <Clock className="w-3 h-3 mr-1" />
+                            En attente
+                          </Badge>
+                        ) : selectedCandidature.statut === 'accepted' ? (
+                          <Badge className="bg-green-600 ml-2">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Acceptée
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="ml-2">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Refusée
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
           </DialogHeader>
-          {selectedCandidature && (
-            <div className="space-y-6">
-              {/* Étudiant */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-muted-foreground">ÉTUDIANT</h4>
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <p className="font-medium">
-                    {selectedCandidature.student_first_name} {selectedCandidature.student_last_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{selectedCandidature.student_email}</p>
-                  <Badge variant="secondary">{selectedCandidature.domaine_etude}</Badge>
-                </div>
-              </div>
-
-              {/* Offre */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-muted-foreground">OFFRE</h4>
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <p className="font-medium">{selectedCandidature.offre_title}</p>
-                  <p className="text-sm text-muted-foreground">{selectedCandidature.company_name}</p>
-                  <Badge variant="secondary">{selectedCandidature.offre_domaine}</Badge>
-                </div>
-              </div>
-
-              {/* Message de motivation */}
-              {selectedCandidature.message && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm text-muted-foreground">MESSAGE DE MOTIVATION</h4>
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <p className="text-sm leading-relaxed">{selectedCandidature.message}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Statut et dates */}
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm text-muted-foreground">INFORMATIONS</h4>
-                <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Statut</span>
-                    {getStatutBadge(selectedCandidature.statut)}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Date de candidature</span>
-                    <span className="text-sm font-medium">
-                      {new Date(selectedCandidature.date_candidature).toLocaleDateString('fr-FR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>
+            <Button 
+              onClick={() => setDetailsDialogOpen(false)}
+              disabled={!!actionInProgress}
+            >
               Fermer
             </Button>
           </DialogFooter>

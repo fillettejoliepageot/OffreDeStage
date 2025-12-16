@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { adminAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { TableActions } from "@/components/admin/TableActions"
 
 interface Offre {
   id: string
@@ -36,8 +37,7 @@ export default function AdminOffres() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedOffer, setSelectedOffer] = useState<Offre | null>(null)
   const [actionDialog, setActionDialog] = useState<"delete" | "activate" | "deactivate" | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null)
 
   useEffect(() => {
     loadOffers()
@@ -71,7 +71,7 @@ export default function AdminOffres() {
   )
 
   const handleDelete = async (offerId: string) => {
-    setIsDeleting(true)
+    setActionInProgress('delete')
     try {
       const response = await adminAPI.deleteOffre(offerId)
       
@@ -89,25 +89,25 @@ export default function AdminOffres() {
       console.error('Erreur:', error)
       toast({
         title: "❌ Erreur",
-        description: error.response?.data?.message || "Erreur lors de la suppression",
+        description: error.response?.data?.message || "Erreur lors de la suppression de l'offre",
         variant: "destructive",
       })
     } finally {
-      setIsDeleting(false)
+      setActionInProgress(null)
       setActionDialog(null)
-      setSelectedOffer(null)
     }
   }
 
-  const handleUpdateStatus = async (offreId: string, statut: 'active' | 'désactivée') => {
-    setIsUpdatingStatus(true)
+  const handleUpdateStatus = async (offerId: string, statut: 'active' | 'désactivée') => {
+    const action = statut === 'active' ? 'unblock' : 'block'
+    setActionInProgress(action)
     try {
-      const response = await adminAPI.updateOffreStatus(offreId, statut)
+      const response = await adminAPI.updateOffreStatus(offerId, statut)
       
       if (response.success) {
         toast({
           title: "✅ Succès",
-          description: statut === 'désactivée' ? "Offre désactivée avec succès" : "Offre activée avec succès",
+          description: statut === 'active' ? "Offre activée avec succès" : "Offre désactivée avec succès",
           variant: "default",
         })
         
@@ -118,13 +118,12 @@ export default function AdminOffres() {
       console.error('Erreur:', error)
       toast({
         title: "❌ Erreur",
-        description: error.response?.data?.message || "Erreur lors de la mise à jour du statut",
+        description: error.response?.data?.message || "Erreur lors de la mise à jour du statut de l'offre",
         variant: "destructive",
       })
     } finally {
-      setIsUpdatingStatus(false)
+      setActionInProgress(null)
       setActionDialog(null)
-      setSelectedOffer(null)
     }
   }
 
@@ -254,51 +253,26 @@ export default function AdminOffres() {
                         )}
                       </TableCell>
                       <TableCell>{Number(offer.candidatures_count) || 0}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {offer.statut === 'désactivée' ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedOffer(offer)
-                                setActionDialog("activate")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                            >
-                              <Power className="w-4 h-4 mr-1" />
-                              Activer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedOffer(offer)
-                                setActionDialog("deactivate")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                            >
-                              <PowerOff className="w-4 h-4 mr-1" />
-                              Désactiver
-                            </Button>
-                          )}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedOffer(offer)
-                              setActionDialog("delete")
-                            }}
-                            disabled={isDeleting || isUpdatingStatus}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Supprimer
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableActions
+                        item={{
+                          ...offer,
+                          statut: offer.statut === 'active' ? 'actif' : 'bloqué' as 'actif' | 'bloqué'
+                        }}
+                        onView={() => {
+                          // TODO: Implémenter la vue des détails de l'offre
+                          toast({
+                            title: "Détails de l'offre",
+                            description: `Affichage des détails de l'offre ${offer.title}`,
+                          })
+                        }}
+                        onBlock={() => handleUpdateStatus(offer.id, 'désactivée')}
+                        onUnblock={() => handleUpdateStatus(offer.id, 'active')}
+                        onDelete={() => handleDelete(offer.id)}
+                        isBlocking={actionInProgress === 'block' || actionInProgress === 'unblock'}
+                        isDeleting={actionInProgress === 'delete'}
+                        type="offer"
+                        viewLabel="Voir détails"
+                      />
                     </TableRow>
                   ))}
                 </TableBody>
@@ -308,102 +282,83 @@ export default function AdminOffres() {
         </CardContent>
       </Card>
 
-      {/* Delete Dialog */}
-      <Dialog open={actionDialog === "delete"} onOpenChange={() => setActionDialog(null)}>
+      {/* Confirmation Dialog for Actions */}
+      <Dialog open={!!actionDialog} onOpenChange={(open) => !open && setActionDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer l'offre</DialogTitle>
+            <DialogTitle>
+              {actionDialog === "delete" 
+                ? "Supprimer l'offre" 
+                : actionDialog === "deactivate"
+                  ? "Désactiver l'offre"
+                  : "Activer l'offre"}
+            </DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer définitivement l'offre{" "}
-              <strong>{selectedOffer?.title}</strong> ? Cette action est irréversible et supprimera également toutes les candidatures associées.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isDeleting}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedOffer && handleDelete(selectedOffer.id)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
+              {actionDialog === "delete" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Suppression...
+                  Êtes-vous sûr de vouloir supprimer définitivement l'offre{" "}
+                  <strong>{selectedOffer?.title}</strong> de l'entreprise{" "}
+                  <strong>{selectedOffer?.company_name}</strong> ?
+                  <br />
+                  Cette action est irréversible et supprimera également toutes les candidatures associées.
                 </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Deactivate Dialog */}
-      <Dialog open={actionDialog === "deactivate"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Désactiver l'offre</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir désactiver l'offre{" "}
-              <strong>{selectedOffer?.title}</strong> ? L'offre ne sera plus visible par les étudiants.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedOffer && handleUpdateStatus(selectedOffer.id, 'désactivée')}
-              disabled={isUpdatingStatus}
-            >
-              {isUpdatingStatus ? (
+              ) : actionDialog === "deactivate" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Désactivation...
+                  Êtes-vous sûr de vouloir désactiver l'offre{" "}
+                  <strong>{selectedOffer?.title}</strong> de l'entreprise{" "}
+                  <strong>{selectedOffer?.company_name}</strong> ?
+                  <br />
+                  L'offre ne sera plus visible par les étudiants et ne pourra plus recevoir de candidatures.
                 </>
               ) : (
                 <>
-                  <PowerOff className="w-4 h-4 mr-1" />
-                  Désactiver
+                  Êtes-vous sûr de vouloir activer l'offre{" "}
+                  <strong>{selectedOffer?.title}</strong> de l'entreprise{" "}
+                  <strong>{selectedOffer?.company_name}</strong> ?
+                  <br />
+                  L'offre sera à nouveau visible par les étudiants et pourra recevoir des candidatures.
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Activate Dialog */}
-      <Dialog open={actionDialog === "activate"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Activer l'offre</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir activer l'offre{" "}
-              <strong>{selectedOffer?.title}</strong> ? L'offre sera à nouveau visible par les étudiants.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
+            <Button 
+              variant="outline" 
+              onClick={() => setActionDialog(null)} 
+              disabled={!!actionInProgress}
+            >
               Annuler
             </Button>
             <Button 
-              onClick={() => selectedOffer && handleUpdateStatus(selectedOffer.id, 'active')}
-              disabled={isUpdatingStatus}
-              className="bg-blue-600 hover:bg-blue-700"
+              variant={actionDialog === 'activate' ? 'default' : 'destructive'} 
+              onClick={() => {
+                if (!selectedOffer) return
+                if (actionDialog === 'delete') {
+                  handleDelete(selectedOffer.id)
+                } else if (actionDialog === 'deactivate') {
+                  handleUpdateStatus(selectedOffer.id, 'désactivée')
+                } else if (actionDialog === 'activate') {
+                  handleUpdateStatus(selectedOffer.id, 'active')
+                }
+                setActionDialog(null)
+              }}
+              disabled={!!actionInProgress}
             >
-              {isUpdatingStatus ? (
+              {actionInProgress ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Activation...
+                  {actionInProgress === 'delete' 
+                    ? 'Suppression...' 
+                    : actionInProgress === 'block'
+                      ? 'Désactivation...'
+                      : 'Activation...'}
                 </>
+              ) : actionDialog === 'delete' ? (
+                'Supprimer'
+              ) : actionDialog === 'deactivate' ? (
+                'Désactiver'
               ) : (
-                <>
-                  <Power className="w-4 h-4 mr-1" />
-                  Activer
-                </>
+                'Activer'
               )}
             </Button>
           </DialogFooter>

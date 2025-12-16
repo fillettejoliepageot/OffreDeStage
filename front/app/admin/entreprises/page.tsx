@@ -18,6 +18,7 @@ import {
 import { adminAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { CompanyDetailsModal } from "@/components/admin/CompanyDetailsModal"
+import { TableActions } from "@/components/admin/TableActions"
 
 interface Company {
   id: string
@@ -37,10 +38,9 @@ export default function AdminEntreprises() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [actionDialog, setActionDialog] = useState<"delete" | "block" | "unblock" | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null)
 
   useEffect(() => {
     loadCompanies()
@@ -74,7 +74,7 @@ export default function AdminEntreprises() {
   )
 
   const handleDelete = async (companyId: string) => {
-    setIsDeleting(true)
+    setActionInProgress('delete')
     try {
       const response = await adminAPI.deleteUser(companyId)
       
@@ -91,19 +91,18 @@ export default function AdminEntreprises() {
     } catch (error: any) {
       console.error('Erreur:', error)
       toast({
-        title: "❌ Erreur",
+        title: " Erreur",
         description: error.response?.data?.message || "Erreur lors de la suppression",
         variant: "destructive",
       })
     } finally {
-      setIsDeleting(false)
-      setActionDialog(null)
-      setSelectedCompany(null)
+      setActionInProgress(null)
     }
   }
 
   const handleUpdateStatus = async (companyId: string, statut: 'actif' | 'bloqué') => {
-    setIsUpdatingStatus(true)
+    const action = statut === 'bloqué' ? 'block' : 'unblock'
+    setActionInProgress(action)
     try {
       const response = await adminAPI.updateUserStatus(companyId, statut)
       
@@ -125,9 +124,7 @@ export default function AdminEntreprises() {
         variant: "destructive",
       })
     } finally {
-      setIsUpdatingStatus(false)
-      setActionDialog(null)
-      setSelectedCompany(null)
+      setActionInProgress(null)
     }
   }
 
@@ -261,63 +258,19 @@ export default function AdminEntreprises() {
                         )}
                       </TableCell>
                       <TableCell>{company.offres_count}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCompanyId(company.id)
-                              setDetailsModalOpen(true)
-                            }}
-                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Détails
-                          </Button>
-                          {company.statut === 'bloqué' ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCompany(company)
-                                setActionDialog("unblock")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                            >
-                              <CheckCircle2 className="w-4 h-4 mr-1" />
-                              Débloquer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedCompany(company)
-                                setActionDialog("block")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                            >
-                              <Ban className="w-4 h-4 mr-1" />
-                              Bloquer
-                            </Button>
-                          )}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCompany(company)
-                              setActionDialog("delete")
-                            }}
-                            disabled={isDeleting || isUpdatingStatus}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Supprimer
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableActions
+                        item={company}
+                        onView={(id) => {
+                          setSelectedCompanyId(id)
+                          setDetailsModalOpen(true)
+                        }}
+                        onBlock={(id) => handleUpdateStatus(id, 'bloqué')}
+                        onUnblock={(id) => handleUpdateStatus(id, 'actif')}
+                        onDelete={handleDelete}
+                        isBlocking={actionInProgress === 'block' || actionInProgress === 'unblock'}
+                        isDeleting={actionInProgress === 'delete'}
+                        type="company"
+                      />
                     </TableRow>
                   ))}
                 </TableBody>
@@ -327,111 +280,83 @@ export default function AdminEntreprises() {
         </CardContent>
       </Card>
 
-      {/* Delete Dialog */}
-      <Dialog open={actionDialog === "delete"} onOpenChange={() => setActionDialog(null)}>
+      {/* Confirmation Dialog for Actions */}
+      <Dialog open={!!actionDialog} onOpenChange={(open) => !open && setActionDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer l'entreprise</DialogTitle>
+            <DialogTitle>
+              {actionDialog === "delete" 
+                ? "Supprimer l'entreprise" 
+                : actionDialog === "block" 
+                  ? "Bloquer l'entreprise" 
+                  : "Débloquer l'entreprise"}
+            </DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer définitivement le compte de{" "}
-              <strong>
-                {selectedCompany?.company_name || selectedCompany?.email}
-              </strong>{" "}
-              ? Cette action est irréversible et supprimera également toutes ses offres et candidatures associées.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isDeleting}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedCompany && handleDelete(selectedCompany.id)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
+              {actionDialog === "delete" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Suppression...
+                  Êtes-vous sûr de vouloir supprimer définitivement le compte de{" "}
+                  <strong>
+                    {selectedCompany?.company_name || selectedCompany?.email}
+                  </strong>{" "}
+                  ? Cette action est irréversible et supprimera également toutes ses offres.
                 </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Block Dialog */}
-      <Dialog open={actionDialog === "block"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bloquer l'entreprise</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir bloquer le compte de{" "}
-              <strong>
-                {selectedCompany?.company_name || selectedCompany?.email}
-              </strong>{" "}
-              ? L'entreprise ne pourra plus se connecter ni publier d'offres.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedCompany && handleUpdateStatus(selectedCompany.id, 'bloqué')}
-              disabled={isUpdatingStatus}
-            >
-              {isUpdatingStatus ? (
+              ) : actionDialog === "block" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Blocage...
+                  Êtes-vous sûr de vouloir bloquer le compte de{" "}
+                  <strong>
+                    {selectedCompany?.company_name || selectedCompany?.email}
+                  </strong>{" "}
+                  ? L'entreprise ne pourra plus se connecter ni publier d'offres.
                 </>
               ) : (
                 <>
-                  <Ban className="w-4 h-4 mr-1" />
-                  Bloquer
+                  Êtes-vous sûr de vouloir débloquer le compte de{" "}
+                  <strong>
+                    {selectedCompany?.company_name || selectedCompany?.email}
+                  </strong>{" "}
+                  ? L'entreprise pourra à nouveau se connecter et publier des offres.
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Unblock Dialog */}
-      <Dialog open={actionDialog === "unblock"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Débloquer l'entreprise</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir débloquer le compte de{" "}
-              <strong>
-                {selectedCompany?.company_name || selectedCompany?.email}
-              </strong>{" "}
-              ? L'entreprise pourra à nouveau se connecter et publier des offres.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
+            <Button 
+              variant="outline" 
+              onClick={() => setActionDialog(null)} 
+              disabled={!!actionInProgress}
+            >
               Annuler
             </Button>
             <Button 
-              onClick={() => selectedCompany && handleUpdateStatus(selectedCompany.id, 'actif')}
-              disabled={isUpdatingStatus}
-              className="bg-blue-600 hover:bg-blue-700"
+              variant={actionDialog === 'unblock' ? 'default' : 'destructive'} 
+              onClick={() => {
+                if (!selectedCompany) return
+                if (actionDialog === 'delete') {
+                  handleDelete(selectedCompany.id)
+                } else if (actionDialog === 'block') {
+                  handleUpdateStatus(selectedCompany.id, 'bloqué')
+                } else if (actionDialog === 'unblock') {
+                  handleUpdateStatus(selectedCompany.id, 'actif')
+                }
+                setActionDialog(null)
+              }}
+              disabled={!!actionInProgress}
             >
-              {isUpdatingStatus ? (
+              {actionInProgress ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Déblocage...
+                  {actionInProgress === 'delete' 
+                    ? 'Suppression...' 
+                    : actionInProgress === 'block' 
+                      ? 'Blocage...' 
+                      : 'Déblocage...'}
                 </>
+              ) : actionDialog === 'delete' ? (
+                'Supprimer'
+              ) : actionDialog === 'block' ? (
+                'Bloquer'
               ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Débloquer
-                </>
+                'Débloquer'
               )}
             </Button>
           </DialogFooter>

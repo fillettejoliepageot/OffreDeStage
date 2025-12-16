@@ -18,6 +18,7 @@ import {
 import { adminAPI } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { StudentDetailsModal } from "@/components/admin/StudentDetailsModal"
+import { TableActions } from "@/components/admin/TableActions"
 
 interface Student {
   id: string
@@ -41,6 +42,7 @@ export default function AdminEtudiants() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null)
 
   useEffect(() => {
     loadStudents()
@@ -75,7 +77,7 @@ export default function AdminEtudiants() {
   )
 
   const handleDelete = async (studentId: string) => {
-    setIsDeleting(true)
+    setActionInProgress('delete')
     try {
       const response = await adminAPI.deleteUser(studentId)
       
@@ -97,14 +99,13 @@ export default function AdminEtudiants() {
         variant: "destructive",
       })
     } finally {
-      setIsDeleting(false)
-      setActionDialog(null)
-      setSelectedStudent(null)
+      setActionInProgress(null)
     }
   }
 
   const handleUpdateStatus = async (studentId: string, statut: 'actif' | 'bloqué') => {
-    setIsUpdatingStatus(true)
+    const action = statut === 'bloqué' ? 'block' : 'unblock'
+    setActionInProgress(action)
     try {
       const response = await adminAPI.updateUserStatus(studentId, statut)
       
@@ -126,9 +127,7 @@ export default function AdminEtudiants() {
         variant: "destructive",
       })
     } finally {
-      setIsUpdatingStatus(false)
-      setActionDialog(null)
-      setSelectedStudent(null)
+      setActionInProgress(null)
     }
   }
 
@@ -265,63 +264,19 @@ export default function AdminEtudiants() {
                         )}
                       </TableCell>
                       <TableCell>{student.candidatures_count}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedStudentId(student.id)
-                              setDetailsModalOpen(true)
-                            }}
-                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Détails
-                          </Button>
-                          {student.statut === 'bloqué' ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedStudent(student)
-                                setActionDialog("unblock")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                            >
-                              <CheckCircle2 className="w-4 h-4 mr-1" />
-                              Débloquer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedStudent(student)
-                                setActionDialog("block")
-                              }}
-                              disabled={isUpdatingStatus || isDeleting}
-                              className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                            >
-                              <Ban className="w-4 h-4 mr-1" />
-                              Bloquer
-                            </Button>
-                          )}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedStudent(student)
-                              setActionDialog("delete")
-                            }}
-                            disabled={isDeleting || isUpdatingStatus}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Supprimer
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableActions
+                        item={student}
+                        onView={(id) => {
+                          setSelectedStudentId(id)
+                          setDetailsModalOpen(true)
+                        }}
+                        onBlock={(id) => handleUpdateStatus(id, 'bloqué')}
+                        onUnblock={(id) => handleUpdateStatus(id, 'actif')}
+                        onDelete={handleDelete}
+                        isBlocking={actionInProgress === 'block' || actionInProgress === 'unblock'}
+                        isDeleting={actionInProgress === 'delete'}
+                        type="student"
+                      />
                     </TableRow>
                   ))}
                 </TableBody>
@@ -331,120 +286,92 @@ export default function AdminEtudiants() {
         </CardContent>
       </Card>
 
-      {/* Delete Dialog */}
-      <Dialog open={actionDialog === "delete"} onOpenChange={() => setActionDialog(null)}>
+      {/* Confirmation Dialog for Actions */}
+      <Dialog open={!!actionDialog} onOpenChange={(open) => !open && setActionDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer l'étudiant</DialogTitle>
+            <DialogTitle>
+              {actionDialog === "delete" 
+                ? "Supprimer l'étudiant" 
+                : actionDialog === "block" 
+                  ? "Bloquer l'étudiant" 
+                  : "Débloquer l'étudiant"}
+            </DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer définitivement le compte de{" "}
-              <strong>
-                {selectedStudent?.first_name && selectedStudent?.last_name
-                  ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
-                  : selectedStudent?.email
-                }
-              </strong>{" "}
-              ? Cette action est irréversible et supprimera également toutes ses candidatures.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isDeleting}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedStudent && handleDelete(selectedStudent.id)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
+              {actionDialog === "delete" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Suppression...
+                  Êtes-vous sûr de vouloir supprimer définitivement le compte de{" "}
+                  <strong>
+                    {selectedStudent?.first_name && selectedStudent?.last_name
+                      ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
+                      : selectedStudent?.email
+                    }
+                  </strong>{" "}
+                  ? Cette action est irréversible et supprimera également toutes ses candidatures.
                 </>
-              ) : (
-                "Supprimer"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Block Dialog */}
-      <Dialog open={actionDialog === "block"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bloquer l'étudiant</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir bloquer le compte de{" "}
-              <strong>
-                {selectedStudent?.first_name && selectedStudent?.last_name
-                  ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
-                  : selectedStudent?.email
-                }
-              </strong>{" "}
-              ? L'étudiant ne pourra plus se connecter ni postuler aux offres.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => selectedStudent && handleUpdateStatus(selectedStudent.id, 'bloqué')}
-              disabled={isUpdatingStatus}
-            >
-              {isUpdatingStatus ? (
+              ) : actionDialog === "block" ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Blocage...
+                  Êtes-vous sûr de vouloir bloquer le compte de{" "}
+                  <strong>
+                    {selectedStudent?.first_name && selectedStudent?.last_name
+                      ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
+                      : selectedStudent?.email
+                    }
+                  </strong>{" "}
+                  ? L'étudiant ne pourra plus se connecter ni postuler aux offres.
                 </>
               ) : (
                 <>
-                  <Ban className="w-4 h-4 mr-1" />
-                  Bloquer
+                  Êtes-vous sûr de vouloir débloquer le compte de{" "}
+                  <strong>
+                    {selectedStudent?.first_name && selectedStudent?.last_name
+                      ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
+                      : selectedStudent?.email
+                    }
+                  </strong>{" "}
+                  ? L'étudiant pourra à nouveau se connecter et postuler aux offres.
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Unblock Dialog */}
-      <Dialog open={actionDialog === "unblock"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Débloquer l'étudiant</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir débloquer le compte de{" "}
-              <strong>
-                {selectedStudent?.first_name && selectedStudent?.last_name
-                  ? `${selectedStudent.first_name} ${selectedStudent.last_name}`
-                  : selectedStudent?.email
-                }
-              </strong>{" "}
-              ? L'étudiant pourra à nouveau se connecter et postuler aux offres.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog(null)} disabled={isUpdatingStatus}>
+            <Button 
+              variant="outline" 
+              onClick={() => setActionDialog(null)} 
+              disabled={!!actionInProgress}
+            >
               Annuler
             </Button>
             <Button 
-              onClick={() => selectedStudent && handleUpdateStatus(selectedStudent.id, 'actif')}
-              disabled={isUpdatingStatus}
-              className="bg-blue-600 hover:bg-blue-700"
+              variant={actionDialog === 'unblock' ? 'default' : 'destructive'} 
+              onClick={() => {
+                if (!selectedStudent) return
+                if (actionDialog === 'delete') {
+                  handleDelete(selectedStudent.id)
+                } else if (actionDialog === 'block') {
+                  handleUpdateStatus(selectedStudent.id, 'bloqué')
+                } else if (actionDialog === 'unblock') {
+                  handleUpdateStatus(selectedStudent.id, 'actif')
+                }
+                setActionDialog(null)
+              }}
+              disabled={!!actionInProgress}
             >
-              {isUpdatingStatus ? (
+              {actionInProgress ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Déblocage...
+                  {actionInProgress === 'delete' 
+                    ? 'Suppression...' 
+                    : actionInProgress === 'block' 
+                      ? 'Blocage...' 
+                      : 'Déblocage...'}
                 </>
+              ) : actionDialog === 'delete' ? (
+                'Supprimer'
+              ) : actionDialog === 'block' ? (
+                'Bloquer'
               ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Débloquer
-                </>
+                'Débloquer'
               )}
             </Button>
           </DialogFooter>
