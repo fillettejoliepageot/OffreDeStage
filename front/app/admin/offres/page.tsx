@@ -256,7 +256,10 @@ export default function AdminOffres() {
                       <TableActions
                         item={{
                           ...offer,
-                          statut: offer.statut === 'active' ? 'actif' : 'bloqué' as 'actif' | 'bloqué'
+                          statut: offer.statut === 'active' ? 'actif' : 'bloqué' as 'actif' | 'bloqué',
+                          email: 'no-email@example.com', // Email par défaut car non disponible dans les offres
+                          first_name: '',
+                          last_name: ''
                         }}
                         onView={() => {
                           // TODO: Implémenter la vue des détails de l'offre
